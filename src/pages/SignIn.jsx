@@ -20,7 +20,7 @@ function SignIn({ prevUrl, loggedIn, setLoggedIn }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setValidationMessage("")
-    await axios.post('/api/token', { email, password })
+    await axios.post('/api/token', { email, password }, { withCredentials: true })
       .then(() => {
         setLoginSuccessfull(true)
       })
