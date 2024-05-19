@@ -86,7 +86,7 @@ function App() {
     <>
       <Routes>
         <Route exact path="/" element={<Home loggedIn={loggedIn} setLoggedIn={setLoggedIn} />} />
-        <Route path="/korkomat24/signin" element={<SignIn prevUrl='/' setLoggedIn={setLoggedIn}/>} />
+        <Route path="/signin" element={<SignIn prevUrl='/' setLoggedIn={setLoggedIn}/>} />
         <Route path="/signup" element={<SignUp setLoggedIn={setLoggedIn} />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/up" element={<UploadFromPhone loggedIn={loggedIn} setLoggedIn={setLoggedIn} />} />
