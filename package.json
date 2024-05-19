@@ -1,8 +1,11 @@
 {
+  "homepage": "http://magda1207.github.io/korkomat24",
   "name": "open-pro-react",
   "version": "0.1.0",
   "scripts": {
     "dev": "vite --host",
+    "predeploy":"npm run build",
+    "deploy":"gh-pages -d build",
     "build": "vite build",
     "preview": "vite preview",
     "api": "nodemon ./src/server/api/apiServer.js --ignore client",
@@ -38,6 +41,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^3.1.0",
     "autoprefixer": "^10.4.13",
+    "gh-pages": "^6.1.1",
     "postcss": "^8.4.21",
     "tailwindcss": "^3.2.6",
     "vite": "^4.5.2"
