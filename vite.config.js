@@ -19,8 +19,8 @@ export default defineConfig({
       },
     },
   },
-  base: "/korkomat24",
   plugins: [react()],
+  base: "/korkomat24/",
   resolve: {
     alias: [
       {
