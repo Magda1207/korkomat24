@@ -9,6 +9,7 @@ import axios from 'axios'
 
 //axios.defaults.baseURL = process.env.VITE_REACT_APP_BASE_URL;
 axios.defaults.baseURL= process.env.NODE_ENV === 'production' ? "https://api.magda1207.smallhost.pl" :"/"
+axios.defaults.withCredentials = true;
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   //<React.StrictMode>
