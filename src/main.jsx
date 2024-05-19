@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter  as Router } from 'react-router-dom';
+import { HashRouter  as Router } from 'react-router-dom';
 import App from './App';
 import { PrimeReactProvider } from "primereact/api";
 
@@ -12,7 +12,7 @@ axios.defaults.baseURL= process.env.NODE_ENV === 'production' ? "https://api.mag
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   //<React.StrictMode>
-    <Router basename={"/korkomat24/"}>
+    <Router>
     <PrimeReactProvider>
         <App />
       </PrimeReactProvider>
