@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite --host",
     "predeploy":"npm run build",
-    "deploy":"gh-pages -d build",
+    "deploy":"gh-pages -d dist",
     "build": "vite build",
     "preview": "vite preview",
     "api": "nodemon ./src/server/api/apiServer.js --ignore client",
