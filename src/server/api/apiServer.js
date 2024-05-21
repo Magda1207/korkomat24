@@ -104,7 +104,7 @@ app.post("/api/token", async (req, res) => {
     let accessToken = jwt.sign({ email: email }, access_token_secret, { expiresIn: access_token_exp })
     let refreshToken = jwt.sign({ email: email }, refresh_token_secret, { expiresIn: refresh_token_exp })
     res.header('Access-Control-Expose-Headers', "Set-Cookie");
-    res.cookie('accessToken', accessToken, { httpOnly: true }).cookie('refreshToken', refreshToken, { httpOnly: true }).cookie('loggedIn', true)
+    res.cookie('accessToken', accessToken, { httpOnly: true, sameSite: "none", secure: true }).cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: "none", secure: true }).cookie('loggedIn', true, { httpOnly: true, sameSite: "none", secure: true })
     res.status(200).json({ "title": "Authorized", "status": 200, "accessToken": accessToken, "refreshToken": refreshToken })
 })
 

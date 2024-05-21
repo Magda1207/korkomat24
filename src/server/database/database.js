@@ -137,6 +137,7 @@ async function getHash(email) {
 
 async function createUser(email, username, phone, passwordHash) {
     const userId = uuid();
+    const roomId = uuid();
     //TODO: Dodac walidacje - Istniejacy email: Wyglada na to ze masz juz konto. Sprobuj sie zalogowac. Istniejacy telefon: ...
     const [user] = await pool.query(`
     INSERT INTO Users (id, email, username, phoneNumber, passwordHash)
@@ -147,9 +148,9 @@ async function createUser(email, username, phone, passwordHash) {
     const roomCode = generateRoomCode(5)
 
     const [room] = await pool.query(`
-    INSERT INTO Rooms (userId, roomCode, isActive)
-    VALUES (?, ?, ?)
-    `, [userId, roomCode, 0])
+    INSERT INTO Rooms (Id, userId, roomCode, isActive)
+    VALUES (?, ?, ?, ?)
+    `, [roomId, userId, roomCode, 0])
 }
 
 async function updateRoomSettings(roomId, subject, grade, section) {
