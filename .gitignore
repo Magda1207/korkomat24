@@ -7,3 +7,4 @@ dist-ssr
 .env.staging
 *.local
 backend/api/.env
+/public
