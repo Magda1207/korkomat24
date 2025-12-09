@@ -36,7 +36,7 @@ function HeroHome({ isTeacher, loggedIn }) {
           className="btn lg:text-xl text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:bg-gradient-to-r hover:from-purple-600 hover:to-indigo-700 w-full mb-4 sm:w-auto sm:mb-0 mx-3"
           href={loggedIn ? "#/room" : "#/checkHowSimpleItIs"}
         >
-          Wchodzę
+          WchodzęTest
         </a>
       </div>
     </div>
