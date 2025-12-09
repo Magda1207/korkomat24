@@ -56,6 +56,7 @@ const SidePanel = ({ socket, room, isTeacher, loggedIn, getLessonStatus }) => {
 
   useEffect(() => {
     socket.on('peer_id_joined', () => {
+      console.log('Peer joined!')
       setlessonStatusUpdated((prev) => prev + 1)
     });
 
