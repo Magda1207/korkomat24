@@ -1,55 +1,87 @@
-import { React, useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
-import Header from '../partials/Header';
 import { useFetch } from '../server/common/apiCalls'
-
+import { useSearchParams } from 'react-router-dom';
 import { FileUpload } from 'primereact/fileupload';
-import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
-import { FloatLabel } from "primereact/floatlabel";
-
-const UploadFromPhone = ({ loggedIn, setLoggedIn }) => {
+import LoadingSpinner from '../partials/LoadingSpinner';
+const UploadFromPhone = ({ socket }) => {
 
   const toast = useRef();
-  const [room, setRoom] = useState()
-  const [code, setCode] = useState('')
-  const [codeEntered, setCodeEntered] = useState(false)
-  const [roomFromDb, fetchError] = useFetch('/api/roomByCode', {code: code}, [codeEntered])
   const [uploadUrl, setUploadUrl] = useState()
+  const [socketConnected, setSocketConnected] = useState(socket.connected)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const code = searchParams.get("code")
+  const [refreshRoom, setRefreshRoom] = useState(1)
+  const [imagesDirectoryFromDb, loading] = useFetch('/api/imagesDirectoryByCode', { code: code }, [refreshRoom, code]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAnyoneElseHere, setIsAnyoneElseHere] = useState(false);
+
+  const apiBaseUrl = import.meta.env.VITE_AXIOS_BASE_URL;
+  const uploadBaseUrl = apiBaseUrl ? apiBaseUrl + '/api/uploadMobile' : '/api/uploadMobile'
 
   useEffect(() => {
-    setCodeEntered(false)
-    setRoom(localStorage.getItem('room'))
+    if (!socketConnected) {
+      socket.connect()
+      setSocketConnected(true)
+    }
   })
 
-  useEffect(() => {
-    localStorage.setItem('room', roomFromDb)
-    setRoom(roomFromDb)
-    setUploadUrl("/api/uploadMobile?room="+roomFromDb)
-  }, [roomFromDb])
+
+  socket.on('is_anyone_here_response', (data) => {
+    console.log("is_anyone_here_response received:", data.response);
+    setIsAnyoneElseHere(data.response);
+  });
 
   useEffect(() => {
-    if(code.length == 5) {
-      setCodeEntered(true)
+    if (imagesDirectoryFromDb) {
+      localStorage.setItem('room', imagesDirectoryFromDb.id)
+      setUploadUrl(uploadBaseUrl + "?room=" + imagesDirectoryFromDb.id)
+      socket.emit('is_anyone_here', { room: imagesDirectoryFromDb.id })
     }
-  }, [code])
+    else {
+      toast.current.show({ severity: 'error', summary: 'Błąd', detail: 'Brak dostępu do pokoju' });
+    }
+
+  }, [imagesDirectoryFromDb])
 
   const onUpload = () => {
-    toast.current.show({ severity: 'info', summary: 'Sukces!', detail: 'Plik został dodany do galerii' });
+    setIsLoading(false);
+    socket.emit('photoUploaded', { room: imagesDirectoryFromDb.id, isTeacherDir: imagesDirectoryFromDb?.teacherDir });
+    if (imagesDirectoryFromDb) toast.current.show({ severity: 'info', detail: 'Dodawanie plików zakończone sukcesem' });
   };
+
+  const onBeforeUpload = () => {
+    setRefreshRoom(prev => prev + 1);
+    if (imagesDirectoryFromDb && !imagesDirectoryFromDb.teacherDir) {
+      console.log("Checking if anyone else is here in room:", imagesDirectoryFromDb.id);
+      socket.emit('is_anyone_here', { room: imagesDirectoryFromDb.id });
+    }
+    setIsLoading(true);
+  };
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setRefreshRoom(prev => prev + 1);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+  // Note: To test locally on mobile, remove the isAnyoneElseHere check below (socket is not working locally)
+  // or test on browser 
   return (
     <div className="flex flex-col min-h-screen overflow-hidden">
-
-      {/*  Site header */}
-      <Header loggedIn={loggedIn} setLoggedIn={setLoggedIn} />
-
       <Toast ref={toast}></Toast>
       <div className='h-screen flex items-center justify-center'>
-        {room ?
-          <FileUpload mode="basic" chooseLabel="Dodaj zdjęcie z telefonu" auto name="images" url={uploadUrl} accept="image/*" multiple maxFileSize={10000000} onUpload={onUpload} />
-          : <FloatLabel>
-            <label htmlFor="accessCode">Kod dostępu</label>
-            <InputText id="accessCode" value={code} onChange={(e) => setCode(e.target.value)} /></FloatLabel>}
+        {loading || isLoading ? (
+          <LoadingSpinner />
+        ) : imagesDirectoryFromDb?.id && (imagesDirectoryFromDb.teacherDir || isAnyoneElseHere) ? (
+          <FileUpload mode="basic" chooseLabel="Dodaj obraz(y)" auto name="images" url={uploadUrl} accept="image/*" multiple maxFileSize={10000000} onUpload={onUpload} onBeforeUpload={onBeforeUpload} />
+        ) : (!loading && !imagesDirectoryFromDb) ? (
+          <p>Brak dostępu do pokoju</p>
+        ) : null}
       </div>
     </div>
   );

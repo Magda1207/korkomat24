@@ -1,37 +1,46 @@
-import { React, useState, useEffect } from 'react';
-
+import { useState, useEffect } from 'react';
 import Header from '../partials/Header';
-import PageIllustration from '../partials/PageIllustration';
 import ImageCropper from '../partials/Cropper'
-import Avatar from '../partials/Avatar'
-
+import Avatar from '../partials/UserAvatar'
+import Breadcrumbs from '../partials/Breadcrumbs';
+import Footer from '../partials/Footer';
+import { Dialog } from 'primereact/dialog'
+import LessonHistory from '../partials/LessonHistory';
+import { readFile, dataURLtoFile } from '../partials/functions/helpers'
+import icons from '../partials/icons';
 import axios from 'axios'
+import { useFetch } from '../server/common/apiCalls' // dodaj ten import jeśli jeszcze go nie ma
+import learningCoupleImage from '../images/learning4.jpg'; // Dodaj import obrazka
 
-function readFile(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.addEventListener('load', () => resolve(reader.result), false)
-    reader.readAsDataURL(file)
-  })
-}
-
-function dataURLtoFile(dataurl, filename) {
-  var arr = dataurl.split(','),
-    mime = arr[0].match(/:(.*?);/)[1],
-    bstr = atob(arr[arr.length - 1]),
-    n = bstr.length,
-    u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new File([u8arr], filename, { type: mime });
-}
-
-const Profile = ({ loggedIn, setLoggedIn }) => {
+const Profile = ({ loggedIn, setLoggedIn, myStatus }) => {
 
   const [imageSrc, setImageSrc] = useState()
   const [cropImageDialogVisible, setCropImageDialogVisible] = useState()
   const [croppedImage, setCroppedImage] = useState()
+  const [firstAndLastName, setFirstAndLastName] = useState()
+  const [email, setEmail] = useState()
+  const [phone, setPhone] = useState()
+  const [phoneDisplay, setPhoneDisplay] = useState()
+  const [lessonHistoryModalVisible, setLessonHistoryModalVisible] = useState(false)
+
+  const [activeLessons] = useFetch('/api/lessons/history?active=1');
+
+  useEffect(() => {
+    const firstName = localStorage.getItem('firstName')
+    const lastName = localStorage.getItem('lastName')
+    const email = localStorage.getItem('email')
+    const phone = localStorage.getItem('phone')
+    if (firstName && lastName) setFirstAndLastName(firstName + " " + lastName)
+    if (email) setEmail(email)
+    if (phone) setPhone(phone)
+  }, [])
+
+  useEffect(() => {
+    if (phone) {
+      let phoneDisplay = phone.substring(0, 3) + " " + phone.substring(3, 6) + " " + phone.substring(6, 9)
+      setPhoneDisplay(phoneDisplay)
+    }
+  }, [phone])
 
   useEffect(() => {
     async function updateProfileImageData() {
@@ -43,18 +52,12 @@ const Profile = ({ loggedIn, setLoggedIn }) => {
           'Content-Type': 'image/jpeg'
         }
       })
-        .then(() => {
-          console.log("Profile image updated")
-        })
-        .catch(e => {
-          if (e.response.status == 400) {
-            console.log(e.response.data.description)
-          }
+        .then((res) => {
+          if (!(res instanceof Error)) location.reload()
         })
     }
     if (croppedImage) updateProfileImageData();
   }, [croppedImage])
-
 
   const onFileChange = async (e) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -70,189 +73,123 @@ const Profile = ({ loggedIn, setLoggedIn }) => {
     setCroppedImage(croppedImg)
   }
 
+  const handleRemovePhoto = () => {
+    axios.post('/api/upload/removeProfileImage')
+      .then((res) => {
+        if (!(res instanceof Error)) {
+          setCroppedImage(null)
+          setImageSrc(null)
+          location.reload()
+        }
+      })
+      .catch((error) => {
+        console.error("Error removing profile image:", error);
+      });
+  }
+
   return (
-    <div className="flex flex-col min-h-screen overflow-hidden">
+    <div className="flex flex-col min-h-screen overflow-hidden bg-gray-50">
+      {/* Obrazek na górze */}
+      <div className="relative w-full">
+        <div className="w-full h-[32vh] md:h-[25vh] rounded-b-3xl overflow-hidden">
+          <img
+            src={learningCoupleImage}
+            alt="Tło"
+            className="w-full h-full object-cover object-center brightness-[0.6] contrast-50"
+          />
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-black/60 via-black/30 to-transparent pointer-events-none" />
+        </div>
+        {/* Nagłówek wyśrodkowany na obrazku */}
+        <div className="absolute top-20 left-0 w-full h-full flex items-center justify-center pointer-events-none">
+          <div className="text-5xl font-semibold text-white text-center drop-shadow-lg pointer-events-auto tracking-wider">
+            Moje konto
+          </div>
+        </div>
+      </div>
 
       {/*  Site header */}
-      <Header loggedIn={loggedIn} setLoggedIn={setLoggedIn} />
+      <Header loggedIn={loggedIn} setLoggedIn={setLoggedIn}  myStatus={myStatus} lightMode={true}/>
 
       {/*  Page content */}
       <main className="grow">
-
-        {/*  Page illustration */}
-        <div className="relative max-w-6xl mx-auto h-0 pointer-events-none" aria-hidden="true">
-          <PageIllustration />
-        </div>
-
         <section className="relative">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="pt-32 pb-12 md:pt-40 md:pb-20">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            <div className="pt-20 pb-12 md:pt-24 md:pb-20">
+              {/* Profile Card */}
+              <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col sm:flex-row items-center gap-6 mb-8">
+                <div className="flex flex-col items-center sm:items-start">
+                  <Avatar size="large" />
+                  <label
+                    htmlFor="getFile"
+                    className="self-center mt-3 text-xs font-medium text-blue-600 dark:text-blue-500 hover:underline cursor-pointer transition"
+                  >
+                    Edytuj zdjęcie
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    className="self-center mt-1 text-xs font-medium text-red-600 hover:underline cursor-pointer transition bg-transparent border-0 p-0"
+                  >
+                    [x] Usuń 
+                  </button>
+                  <input
+                    id="getFile"
+                    className="hidden"
+                    type="file"
+                    onChange={onFileChange}
+                    accept="image/*"
+                  />
+                  <ImageCropper
+                    cropImageDialogVisible={cropImageDialogVisible}
+                    imageSrc={imageSrc}
+                    setCropImageDialogVisible={setCropImageDialogVisible}
+                    getCroppedImage={getCroppedImage}
+                  />
+                </div>
+                <div className="flex-1 flex flex-col items-center sm:items-start mt-4 sm:mt-0">
+                  <div className="text-2xl font-semibold text-gray-900 mb-1">{firstAndLastName}</div>
+                  <div className="flex items-center text-gray-700 gap-2 mb-1">
+                    <span className="w-5 h-5 flex items-center justify-center">{icons.MyProfileEmail}</span>
+                    <span className="text-base">{email}</span>
+                  </div>
+                  <div className="flex items-center text-gray-700 gap-2">
+                    <span className="w-5 h-5 flex items-center justify-center">{icons.MyProfilePhone}</span>
+                    <span className="text-base">{phoneDisplay}</span>
+                  </div>
+                </div>
+              </div>
 
-
-              {/* htmlForm */}
-
-              <form>
-                <div className="space-y-12">
-                  <div className="border-b border-gray-900/10 pb-12">
-                    <h2 className="text-base font-semibold leading-7 text-gray-900">Mój Profil</h2>
-
-
-                    <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-
-                      <div className="col-span-full">
-                        <label htmlFor="photo" className="block text-sm font-medium leading-6 text-gray-900">Zdjęcie profilowe</label>
-                        <div className="mt-2 flex items-center gap-x-3">
-                          <Avatar />
-                          <label htmlFor="getFile" className="bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-400 rounded shadow">
-                            Wybierz zdjęcie
-                          </label>
-                          <input id='getFile' className="hidden" type="file" onChange={onFileChange} accept="image/*" />
-                          <ImageCropper cropImageDialogVisible={cropImageDialogVisible} imageSrc={imageSrc} setCropImageDialogVisible={setCropImageDialogVisible} getCroppedImage={getCroppedImage} />
-                        </div>
-                      </div>
+              {/* Account Balance Card */}
+              <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col gap-4 mb-8">
+                <div className="text-lg font-semibold text-gray-900">Stan konta: 98 zł</div>
+                <div className="flex items-center gap-4">
+                  <span className="inline-flex items-center justify-center w-14 h-14">
+                    {icons.MyProfileDollar}
+                  </span>
+                  <div>
+                    <div className="flex flex-col gap-2 mt-2 text-blue-600 text-sm font-medium">
+                      <a href="#" className="hover:underline flex items-center gap-2">
+                        <span className="w-5 h-5 flex items-center">{icons.MoneyIn}</span>
+                        Dodaj środki
+                      </a>
+                      <a href="#" className="hover:underline flex items-center gap-2">
+                        <span className="w-5 h-5 flex items-center">{icons.MoneyOut}</span>
+                        Wypłać środki
+                      </a>
+                      <a className="hover:underline flex items-center gap-2 cursor-pointer">
+                        <span className="w-5 h-5 flex items-center">{icons.List}</span>
+                        Historia transakcji
+                      </a>
                     </div>
                   </div>
-
-                  {/*    <div className="border-b border-gray-900/10 pb-12">
-      <h2 className="text-base font-semibold leading-7 text-gray-900">Mój Profil</h2>
-      <p className="mt-1 text-sm leading-6 text-gray-600">Use a permanent address where you can receive mail.</p>
-
-      <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-        <div className="sm:col-span-3">
-          <label htmlFor="first-name" className="block text-sm font-medium leading-6 text-gray-900">First name</label>
-          <div className="mt-2">
-            <input type="text" name="first-name" id="first-name" autoComplete="given-name" className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-          </div>
-        </div>
-
-        <div className="sm:col-span-3">
-          <label htmlFor="last-name" className="block text-sm font-medium leading-6 text-gray-900">Last name</label>
-          <div className="mt-2">
-            <input type="text" name="last-name" id="last-name" autoComplete="family-name" className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-          </div>
-        </div>
-
-        <div className="sm:col-span-4">
-          <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">Email address</label>
-          <div className="mt-2">
-            <input id="email" name="email" type="email" autoComplete="email" className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-          </div>
-        </div>
-
-        <div className="sm:col-span-3">
-          <label htmlFor="country" className="block text-sm font-medium leading-6 text-gray-900">Country</label>
-          <div className="mt-2">
-            <select id="country" name="country" autoComplete="country-name" className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:max-w-xs sm:text-sm sm:leading-6">
-              <option>United States</option>
-              <option>Canada</option>
-              <option>Mexico</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="col-span-full">
-          <label htmlFor="street-address" className="block text-sm font-medium leading-6 text-gray-900">Street address</label>
-          <div className="mt-2">
-            <input type="text" name="street-address" id="street-address" autoComplete="street-address" className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-          </div>
-        </div>
-
-        <div className="sm:col-span-2 sm:col-start-1">
-          <label htmlFor="city" className="block text-sm font-medium leading-6 text-gray-900">City</label>
-          <div className="mt-2">
-            <input type="text" name="city" id="city" autoComplete="address-level2" className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-          </div>
-        </div>
-
-        <div className="sm:col-span-2">
-          <label htmlFor="region" className="block text-sm font-medium leading-6 text-gray-900">State / Province</label>
-          <div className="mt-2">
-            <input type="text" name="region" id="region" autoComplete="address-level1" className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-          </div>
-        </div>
-
-        <div className="sm:col-span-2">
-          <label htmlFor="postal-code" className="block text-sm font-medium leading-6 text-gray-900">ZIP / Postal code</label>
-          <div className="mt-2">
-            <input type="text" name="postal-code" id="postal-code" autoComplete="postal-code" className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-          </div>
-        </div>
-      </div>
-  </div> 
-
-    <div className="border-b border-gray-900/10 pb-12">
-      <h2 className="text-base font-semibold leading-7 text-gray-900">Notifications</h2>
-      <p className="mt-1 text-sm leading-6 text-gray-600">We'll always let you know about important changes, but you pick what else you want to hear about.</p>
-
-      <div className="mt-10 space-y-10">
-        <fieldset>
-          <legend className="text-sm font-semibold leading-6 text-gray-900">By Email</legend>
-          <div className="mt-6 space-y-6">
-            <div className="relative flex gap-x-3">
-              <div className="flex h-6 items-center">
-                <input id="comments" name="comments" type="checkbox" className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" />
-              </div>
-              <div className="text-sm leading-6">
-                <label htmlFor="comments" className="font-medium text-gray-900">Comments</label>
-                <p className="text-gray-500">Get notified when someones posts a comment on a posting.</p>
-              </div>
-            </div>
-            <div className="relative flex gap-x-3">
-              <div className="flex h-6 items-center">
-                <input id="candidates" name="candidates" type="checkbox" className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" />
-              </div>
-              <div className="text-sm leading-6">
-                <label htmlFor="candidates" className="font-medium text-gray-900">Candidates</label>
-                <p className="text-gray-500">Get notified when a candidate applies htmlFor a job.</p>
-              </div>
-            </div>
-            <div className="relative flex gap-x-3">
-              <div className="flex h-6 items-center">
-                <input id="offers" name="offers" type="checkbox" className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" />
-              </div>
-              <div className="text-sm leading-6">
-                <label htmlFor="offers" className="font-medium text-gray-900">Offers</label>
-                <p className="text-gray-500">Get notified when a candidate accepts or rejects an offer.</p>
-              </div>
-            </div>
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend className="text-sm font-semibold leading-6 text-gray-900">Push Notifications</legend>
-          <p className="mt-1 text-sm leading-6 text-gray-600">These are delivered via SMS to your mobile phone.</p>
-          <div className="mt-6 space-y-6">
-            <div className="flex items-center gap-x-3">
-              <input id="push-everything" name="push-notifications" type="radio" className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600" />
-              <label htmlFor="push-everything" className="block text-sm font-medium leading-6 text-gray-900">Everything</label>
-            </div>
-            <div className="flex items-center gap-x-3">
-              <input id="push-email" name="push-notifications" type="radio" className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600" />
-              <label htmlFor="push-email" className="block text-sm font-medium leading-6 text-gray-900">Same as email</label>
-            </div>
-            <div className="flex items-center gap-x-3">
-              <input id="push-nothing" name="push-notifications" type="radio" className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600" />
-              <label htmlFor="push-nothing" className="block text-sm font-medium leading-6 text-gray-900">No push notifications</label>
-            </div>
-          </div>
-        </fieldset>
-      </div>
-    </div>
-*/}
-
                 </div>
-
-                {/*  <div className="mt-6 flex items-center justify-end gap-x-6">
-    <button type="button" className="text-sm font-semibold leading-6 text-gray-900">Cancel</button>
-    <button type="submit" className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Save</button>
-  </div>*/}
-              </form>
-
-              {/* htmlForm */}
+              </div>
             </div>
           </div>
         </section>
-
       </main>
+      {/*  Site footer */}
+      <Footer />
     </div>
   );
 }

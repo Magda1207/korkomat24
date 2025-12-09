@@ -32,11 +32,17 @@
 }
 
 .btn {
-    @apply px-8 py-3;
+    @apply px-8 py-3 rounded-[7px];
+    @apply shadow-[rgba(0,0,0,0.24)_0px_3px_8px];
+    @apply border-none;
 }
 
 .btn-sm {
-    @apply px-4 py-2;
+    @apply px-4 py-2 rounded-[7px];
+}
+
+.btn-xs {
+    @apply px-3 py-1 rounded-[7px];
 }
 
 /* Forms */

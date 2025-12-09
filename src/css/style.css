@@ -38,6 +38,55 @@ html {
   font-size: 14px
 }
 
+svg {
+  pointer-events: none
+}
+
+.clip-bottom {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.clip-left {
+  clip-path: polygon(50% 50%, 100% 0%, 100% 100%);
+}
+
+.custom-dialog .p-dialog-content {
+  background: #F9F9F9 !important;
+  max-width: 50vw;
+}
+
+.custom-crosshair-cursor {
+  cursor: url("data:image/svg+xml,%3Csvg width='23' height='23' viewBox='0 0 23 23' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.2444 11.3203H22.8718M11.5581 0.006558V22.634' stroke='%23C1EDCC' stroke-width='2'/%3E%3C/svg%3E") 12.5 12.5, crosshair !important;
+}
+
+.p-dialog-mask-del {
+  pointer-events: none;
+}
+
+.text-shadow {
+  text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.7);
+}
+
+.canv-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+[data-fabric-hiddentextarea] {
+  position: fixed !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  z-index: -999 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  resize: none !important;
+}
+
 @layer base {
   input[type="number"]::-webkit-inner-spin-button,
   input[type="number"]::-webkit-outer-spin-button {
@@ -46,3 +95,145 @@ html {
   }
 }
 
+.p-dialog {
+  border-radius: 14px !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18) !important;
+  background: #fff !important;
+  overflow: hidden !important;
+}
+
+.p-dialog .p-dialog-header {
+  background: #d3e6f8 !important;
+  border-radius: 14px 14px 0 0 !important;
+  font-weight: 600;
+  font-size: 1rem !important;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 0.4rem 1.5rem !important; 
+  border-bottom: none !important;
+}
+
+.p-dialog .p-dialog-header .p-dialog-title {
+  font-size: 1.2rem !important;
+}
+
+.p-dialog .p-dialog-header .p-dialog-header-icon {
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+.p-dialog .p-dialog-header .p-dialog-header-icon:hover {
+  opacity: 1;
+  background: rgba(255,255,255,0.12) !important;
+  border-radius: 50%;
+}
+
+.p-dialog .p-dialog-content {
+  background: #fff !important;
+  padding: 2rem 2.5rem !important;
+  border-radius: 0 0 14px 14px !important;
+  color: #222;
+  font-size: 1.08rem;
+  text-align: center;
+}
+
+.custom-dialog.no-top-left-right-padding .p-dialog-content {
+  padding-top: 0 !important;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+}
+
+.gallery-scrollbar {
+  padding-right: 26px; 
+  padding-left: 26px; 
+}
+
+.gray-header-modal .p-dialog-header {
+  background: #d3e6f8 !important;
+  color: #222 !important;
+}
+.gray-header-modal .p-dialog-header .p-dialog-title {
+  color: #222 !important;
+}
+
+.circle {
+fill-opacity: 0.8;
+animation: float 6s ease-in-out infinite;
+transform-origin: 60px 60px;
+}
+.circle-1 { fill: #3b82f6; } 
+.circle-2 { fill: #10b981; animation-delay: -2s; } 
+.circle-3 { fill: #8b5cf6; animation-delay: -4s; } 
+
+@keyframes float {
+  0%, 100% {
+    transform: 
+      rotate(0deg) 
+      translateY(0) 
+      scale(1);
+    fill-opacity: 0.8;
+  }
+  33% {
+    transform: 
+      rotate(120deg) 
+      translateY(-8px) 
+      scale(1.05);
+    fill-opacity: 0.9;
+  }
+  66% {
+    transform: 
+      rotate(240deg) 
+      translateY(5px) 
+      scale(0.95);
+    fill-opacity: 0.7;
+  }
+}
+
+/* Carousel animation styles */
+
+.gradient-link {
+  background: linear-gradient(90deg, #34C759 0%, #4eb7b8 50%, #007AFF 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  position: relative;
+  text-decoration: none;
+}
+
+.highlight {
+  z-index: 60 !important;
+  box-shadow: 0 0 0 0 #fff, 0 0 32px 8px #dbcb6cff;
+  border-radius: 12px;
+  transition: box-shadow 0.3s;
+  border: 1px solid #dbcb6cff;
+}
+
+.masked {
+  background: rgba(0,0,0,0.6);
+  z-index: 80;
+  pointer-events: auto;
+}
+
+/* Profesjonalny, nowoczesny scrollbar dla listy nauczycieli */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #1fb9818f #f3f4f6;
+  padding-right: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #4eb7b8 40%, #007AFF 100%);
+  border-radius: 8px;
+  border: 2px solid #f3f4f6;
+  min-height: 40px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 8px;
+}

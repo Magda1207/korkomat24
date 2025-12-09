@@ -35,7 +35,7 @@ const ImageCropper = ({ imageSrc, cropImageDialogVisible, setCropImageDialogVisi
 
   return (
     <div>
-      <Dialog header="Przytnij zdjęcie" visible={cropImageDialogVisible} style={{ width: '50vw' }} onHide={handleHide} onShow={() => { setDialogShown(true) }}>
+      <Dialog header="Przytnij zdjęcie" resizable={false} visible={cropImageDialogVisible} style={{ width: '50vw' }} onHide={handleHide} onShow={() => { setDialogShown(true) }}>
         <div className='relative h-96'> {dialogShown ? <>
           <div >
             <Cropper
@@ -63,7 +63,6 @@ const ImageCropper = ({ imageSrc, cropImageDialogVisible, setCropImageDialogVisi
             />
           </div>
           <button onClick={cropImage} className="absolute mb-3 bottom-0 inset-x-1/4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full">Gotowe</button>
-          
           </> : "Ładowanie zdjęcia..."}
         </div>
       </Dialog >

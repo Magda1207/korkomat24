@@ -1,0 +1,59 @@
+.carousel {
+  position: relative;
+  overflow: hidden;
+  width: 400px;
+  scale: 0.9  
+}
+
+.carousel__wrap {
+  display: flex;
+  flex-direction: column;
+  animation: scroll 10s linear infinite;
+}
+
+
+.carousel__item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; 
+  font-size: 1rem;
+  background: linear-gradient(90deg, #e0f7fa 0%, #989c9cff 100%);
+  border-radius: 12px;
+  border-bottom: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 8px;
+  margin: 8px;
+  color: #222; 
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+
+@keyframes invitation-popup-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+    left: 50%;
+    top: 50%;
+  }
+  100% {
+    opacity: 0.9;
+    transform: translate(-40%, -20%) scale(1);
+    left: 20%;
+    top: 20%;
+  }
+}
+
+.animate-invitation-popup {
+  animation: invitation-popup-in 1.5s cubic-bezier(.6,-0.28,.74,.05) forwards;
+  background: linear-gradient(90deg, #e0f7fa 0%, #989c9cff 70%);
+  border: 1px solid rgba(61, 60, 60, 1);
+  box-shadow: 0 4px 24px 0 rgba(43, 43, 43, 1);
+}

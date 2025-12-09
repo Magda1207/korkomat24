@@ -6,28 +6,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        gray: {
-          100: '#EBF1F5',
-          200: '#D9E3EA',
-          300: '#C5D2DC',
-          400: '#9BA9B4',
-          500: '#707D86',
-          600: '#55595F',
-          700: '#33363A',
-          800: '#25282C',
-          900: '#151719',
-        },
-        purple: {
-          100: '#F4F4FF',
-          200: '#E2E1FF',
-          300: '#CBCCFF',
-          400: '#ABABFF',
-          500: '#8D8DFF',
-          600: '#5D5DFF',
-          700: '#4B4ACF',
-          800: '#38379C',
-          900: '#262668',
-        },
+        'zumthor-100': '#e8eff7',
+        'zumthor-150': '#dfe8f2',
+        'zumthor-200': '#d9d9d9',
+        'light-background': '#F9F9F9',
+        'light-blue': '#D3E6F8'
       },
       spacing: {
         '9/16': '56.25%',
@@ -35,8 +18,9 @@ module.exports = {
         '1/1': '100%',
       },
       fontFamily: {
-        inter: ['Inter', 'sans-serif'],
-        'architects-daughter': ['"Architects Daughter"', 'sans-serif']
+        //inter: ['Inter', 'sans-serif'],
+        //'architects-daughter': ['"Architects Daughter"', 'sans-serif'],
+        teachers: ['"Teachers"', "sans-serif"]
       },
       fontSize: {
         xs: '0.75rem',
@@ -58,8 +42,8 @@ module.exports = {
         tight: '-0.01em',
         normal: '0',
         wide: '0.01em',
-        wider: '0.02em',
-        widest: '0.4em',
+        wider: '0.025em',
+        widest: '0.3em',
       },
       minWidth: {
         '10': '2.5rem',
@@ -71,5 +55,5 @@ module.exports = {
   },
   plugins: [
     require('@tailwindcss/forms'),
-  ],
+  ]
 };

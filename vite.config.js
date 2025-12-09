@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite'
 import postcss from './postcss.config.js'
 import react from '@vitejs/plugin-react'
-
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) =>({
+  publicDir: command === 'build' ? false : 'public',
   define: {
     'process.env': process.env
   },
@@ -19,8 +20,8 @@ export default defineConfig({
       },
     },
   },
-  plugins: [react()],
-  base: "/korkomat24/",
+  plugins: [react(),  basicSsl()],
+  base: "/",
   resolve: {
     alias: [
       {
@@ -36,4 +37,4 @@ export default defineConfig({
       transformMixedEsModules: true,
     }
   } 
-})
+}))

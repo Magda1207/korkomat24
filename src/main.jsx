@@ -1,22 +1,19 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { HashRouter  as Router } from 'react-router-dom';
+import { HashRouter as Router } from 'react-router-dom';
 import App from './App';
 import { PrimeReactProvider } from "primereact/api";
+import FirebaseInitializer from './partials/FirebaseInitializer';
 
-import axios from 'axios'
-//import.meta.env.VITE_REACT_APP_BASE_URL
-
-//axios.defaults.baseURL = process.env.VITE_REACT_APP_BASE_URL;
-axios.defaults.baseURL= process.env.NODE_ENV === 'production' ? "https://api.magda1207.smallhost.pl" :"/"
-axios.defaults.withCredentials = true;
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   //<React.StrictMode>
-    <Router>
-    <PrimeReactProvider>
+  <Router>
+    <FirebaseInitializer>
+      <PrimeReactProvider>
         <App />
       </PrimeReactProvider>
-    </Router>
- // </React.StrictMode>
+    </FirebaseInitializer>
+  </Router>
+  // </React.StrictMode>
 );

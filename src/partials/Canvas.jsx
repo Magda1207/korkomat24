@@ -1,388 +1,547 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import * as fabric from 'fabric';
+import { EraserBrush } from '@erase2d/fabric';
 
-import Tabs from '../partials/Tabs'
-import ToolsSpeedDial from '../partials/ToolsSpeedDial'
-import ColorPaletteSpeedDial from '../partials/ColorPaletteSpeedDial'
-//const Canvas = ({ room, socket, functionType, color }) => {
+import { emitModify, emitPointer, emitAdd, modifyObj, addObj, remotePointer, remoteEraser, removeObj } from '../socket/socket'
+import { saveTabContent, removeObject, addImage, loadTab, addTextboxAtPointer, activateAllObjects } from './functions/canvasFuntions';
+import { v1 as uuid } from 'uuid'
+import Toolbox from './Toolbox';
+import Tabs from './Tabs';
+import TabsDemo from './TabsDemo';
+import LoadingSpinner from './LoadingSpinner';
+import DemoVersionImage from '../images/demoVersion.png';
 
-const Canvas = ({ room, socket }) => {
-
-  const [activeTab, setActiveTab] = useState(1);
-  const [previousTab, setPreviousTab] = useState();
-  const [activeTabDataURL, setActiveTabDataURL] = useState();
-  const [functionType, setFunctionType] = useState()
-  const [resetTools, setResetTools] = useState(false)
-  const [color, setColor] = useState()
-  const [imageSrc, setImageSrc] = useState()
-
-  const canvasRef = useRef(null)
-  const contextRef = useRef(null)
-  const isDrawing = useRef(false)
-  var startX = useRef(null)
-  var startY = useRef(null)
-
-  const canvasTempRef = useRef(null)
-  const contextTempRef = useRef(null)
-
-  const canvasPointerRef = useRef(null)
-  const contextPointerRef = useRef(null)
-
-  const canvasImageRef = useRef(null)
-  const contextImageRef = useRef(null)
-
-  useEffect(() => {
-    console.log("Canvas, socket connected: " + socket.connected)
-    setResetTools(false)
+const Canvas = ({ room, socket, loggedIn, isTeacher, isTutorialDisplayed }) => {
+  const canvasRef = useRef(null);
+  const [activeTab, setActiveTab] = useState()
+  const activeTabRef = useRef(activeTab)
+  const roomRef = useRef(room);
+  const [remoteDimensions, setRemoteDimensions] = useState()
+  const [dimensions, setDimensions] = useState({
+    height: window.innerHeight,
+    width: window.innerWidth
   })
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [selectedTool, setSelectedTool] = useState()
+  const [selectedColor, setSelectedColor] = useState()
+  const [imageCount, setImageCount] = useState(0)
 
-  //Canvas settings on initial render
+  const updateImageCount = () => {
+    if (!canvasRef.current) return;
+    // W Fabric typ dla obrazów bywa 'image' (lowercase). W zapisanym JSON wcześniej mogło być 'Image'.
+    // Dodatkowo dla bezpieczeństwa sprawdzamy instanceof.
+    const objs = canvasRef.current.getObjects();
+    const count = objs.filter(o => {
+      const t = o.type;
+      return t && fabric.FabricImage && o instanceof fabric.FabricImage;
+    }).length;
+    setImageCount(count);
+  }
+
+
   useEffect(() => {
-    const canvas = canvasRef.current
-    canvas.width = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
-    const context = canvas.getContext("2d")
-    context.lineCap = "round"
-    context.strokeStyle = "black"
-    context.shadowColor = "rgba(0, 0, 0, .4)";
-    context.shadowBlur = .2;
-    context.lineJoin = 'round';
-    contextRef.current = context
+    (async () => {
+      console.log("Canvas dimensions ", dimensions)
+      if (canvasRef.current) {
+        const initCanvas = new fabric.Canvas(canvasRef.current, {
+          width: dimensions.width - 10,
+          height: dimensions.height - 132, // Adjust height to fit below the header (mt-16)
+          isDrawingMode: true,
+          selection: false,
+          stopContextMenu: true
+        });
+        initCanvas.freeDrawingBrush = new fabric.PencilBrush(initCanvas);
 
-    const canvasTemp = canvasTempRef.current
-    canvasTemp.width = canvas.offsetWidth
-    canvasTemp.height = canvas.offsetHeight
-    const contextTemp = canvasTemp.getContext("2d")
-    contextTemp.strokeStyle = "black"
-    contextTempRef.current = contextTemp
+        initCanvas.backgroundColor = '#ffffff';
 
-    const canvasPointer = canvasPointerRef.current
-    canvasPointer.width = canvas.offsetWidth
-    canvasPointer.height = canvas.offsetHeight
-    const contextPointer = canvasPointer.getContext("2d")
-    contextPointerRef.current = contextPointer
+        initCanvas.renderAll();
 
-    const canvasImage = canvasImageRef.current
-    canvasImage.width = canvas.offsetWidth
-    canvasImage.height = canvas.offsetHeight
-    const contextImage = canvasImage.getContext("2d")
-    contextImageRef.current = contextImage
+        canvasRef.current = initCanvas;
+        if (loggedIn) socket.emit('dimensions_changed', dimensions)
+        else {
+          // console.log("loggedIn", loggedIn) //TODO: DELETED, to be resolved - napis pojawia się dla zalogowanego teachera po odswiezeniu
+          // const textboxWidth = initCanvas.width * 3 / 4
+          // const textboxLeft = (initCanvas.width - textboxWidth) / 2
+          // const textboxTop = initCanvas.height / 4
+          // let object = new fabric.Textbox('Zaloguj się, aby w pełni korzystać z tablicy', {
+          //   fontSize: 40,
+          //   width: textboxWidth,
+          //   left: textboxLeft,
+          //   top: textboxTop,
+          //   draggable: false,
+          //   selectable: false,
+          //   hasControls: false,
+          //   moveCursor: 'none',
+          //   textAlign: 'center',
+          //   fill: 'gray'
+          // })
 
-  }, [])
+          //const imageWidth = initCanvas.width * 3 / 4
+          //const imageHeight = initCanvas.height * 3 / 4
+          //const imageLeft = (initCanvas.width - imageWidth) / 2
+          //const imageTop = (initCanvas.height - imageHeight) / 2
 
-  // Receive and process messages from socket
-  useEffect(() => {
-    socket.on('drawClick', (data) => {
-      const { x, y, type, functionType, color, imageSrc } = data
-      pointer(x, y)
-      if (functionType === 'pencil') {
-        drawWithPencil(x, y, type, color)
-      }
-      if (functionType === 'line') {
-        drawLine(x, y, type, color)
-      }
-      if (functionType === 'rectangle') {
-        drawRectangle(x, y, type, color)
-      }
-      if (functionType === 'circle') {
-        drawCircle(x, y, type, color)
-      }
-      if (functionType === 'eraser') {
-        erase(x, y, type, color)
-      }
-      if (functionType === 'image') {
-        pasteImage(x, y, type, imageSrc)
-      }
-    })
+          let object = await fabric.FabricImage.fromURL(DemoVersionImage)
+          let scale;
+          if (object.height > initCanvas.height) {
+            scale = initCanvas.height / object.height;
+          } else if (object.width > initCanvas.width / 4) {
+            scale = initCanvas.width / 4 / object.width;
+          } else {
+            scale = 1;
+          }
+          object.set({
+            left: (initCanvas.width - object.width * scale) / 2,
+            top: (initCanvas.height - object.height * scale) / 2,
+            scaleX: scale,
+            scaleY: scale,
+            selectable: false,
+            evented: false,
+          })
 
-    socket.on('loadTabContent', (data) => {
-      if (data) {
-        var img = new Image;
-        img.onload = () => {
-          contextRef.current.drawImage(img, 0, 0, img.width, img.height)
+          initCanvas.add(object)
         }
-        img.src = data;
       }
-    })
-
+    })();
     return () => {
-      socket.off('drawClick')
-      socket.off('loadTabContent')
+      if (canvasRef.current && typeof canvasRef.current.dispose === 'function') {
+        canvasRef.current.dispose();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab) activeTabRef.current = activeTab
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!hasLoaded && activeTab && room) {
+      setIsLoading(true); // pokaż spinner
+      loadTab(room, canvasRef.current, activeTab)
+        .then(() => {
+          setIsLoading(false); //ukryj spinner
+          updateImageCount();
+        });
+      setHasLoaded(true);
+    }
+  }, [activeTab, room, hasLoaded]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({
+        height: window.innerHeight,
+        width: window.innerWidth
+      });
+      if (canvasRef.current) {
+        canvasRef.current.setWidth(window.innerWidth - 10);
+        canvasRef.current.setHeight(window.innerHeight - 132);
+        canvasRef.current.renderAll();
+      }
     };
 
-  }, [socket])
+    const syncDimensions = () => {
+      socket.emit('dimensions_changed', dimensions);
+      socket.emit('get_remote_dimensions');
+    }
 
-  // Clear the Canvas after adding a new tab
+    window.addEventListener('resize', handleResize);
+    window.addEventListener("beforeunload", syncDimensions);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("beforeunload", syncDimensions);
+    };
+  }, []);
+
   useEffect(() => {
-    setActiveTabDataURL(canvasRef.current.toDataURL())
-    contextRef.current.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-  }, [activeTab])
+    //console.log("device pixel ratio", window.devicePixelRatio)
+    const dpr = window.devicePixelRatio || 1;
+    //const canvasWidth = remoteDimensions ? Math.min(dimensions.width*dpr, remoteDimensions.width) : dimensions.width*dpr
+    //const canvasHeight = remoteDimensions ? Math.min(dimensions.height*dpr, remoteDimensions.height) : dimensions.height*dpr
+    const canvasWidth = remoteDimensions ? Math.min(dimensions.width, remoteDimensions.width) : dimensions.width
+    const canvasHeight = remoteDimensions ? Math.min(dimensions.height, remoteDimensions.height) : dimensions.height
+
+
+
+    if (canvasRef.current) {
+      // Rozmiar fizyczny (piksele)
+      canvasRef.current.setWidth((canvasWidth - 10));
+      canvasRef.current.setHeight(canvasHeight - 132);
+
+      // Rozmiar CSS (widoczny na stronie)
+      // canvasRef.current.upperCanvasEl.style.width = `${canvasWidth / dpr - 10 }px`;
+      // canvasRef.current.upperCanvasEl.style.height = `${(canvasHeight  - 132)}px`;
+      // canvasRef.current.lowerCanvasEl.style.width = `${(canvasWidth / dpr - 10)}px`;
+      // canvasRef.current.lowerCanvasEl.style.height = `${(canvasHeight / dpr - 132)}px`;
+
+      canvasRef.current.renderAll();
+      //console.log("Faktyczny canvas height", canvasRef.current.height, "width", canvasRef.current.width)
+    }
+    //socket.emit('dimensions_changed', dimensions)
+    //canvasRef.current.setZoom(0.95/dpr);
+  }, [dimensions, remoteDimensions])
 
   useEffect(() => {
-    socket.emit('saveTabContent', { room: room, tab: previousTab, dataURL: activeTabDataURL })
-  }, [activeTabDataURL])
+    socket.emit('dimensions_changed', dimensions)
+  }, [dimensions])
 
-  const drawWithPencil = (offsetX, offsetY, type, receivedColor = color) => {
-    contextRef.current.strokeStyle = receivedColor
+  socket.on('remote_dimensions_changed', (data) => {
+    //console.log("remote dimensions changed", data)
+    setRemoteDimensions(data)
+  })
 
-    if (type === "mousedown") {
-      contextRef.current.beginPath()
-      contextRef.current.moveTo(offsetX, offsetY)
-      isDrawing.current = true
-    }
-    else if (type === "mousemove") {
-      if (!isDrawing.current) {
-        return
+  socket.on('dimensions_requested', () => {
+    socket.emit('dimensions_changed', dimensions);
+  })
+
+  // Add keydown event listener for Delete key
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Delete') {
+        if (canvasRef.current) {
+          const activeObject = canvasRef.current.getActiveObject();
+          if (activeObject) {
+            removeObject(canvasRef.current, activeObject);
+            saveTabContent(canvasRef.current, activeTabRef.current)
+          }
+        }
       }
-      contextRef.current.lineTo(offsetX, offsetY)
-      contextRef.current.stroke()
-    }
-    else if (type === "mouseup") {
-      isDrawing.current = false
-      contextRef.current.closePath()
-    }
-  }
+    };
+    document.addEventListener('keydown', handleKeyDown);
 
-  const drawRectangle = (offsetX, offsetY, type, receivedColor = color) => {
-    contextRef.current.strokeStyle = receivedColor
-    contextTempRef.current.strokeStyle = receivedColor
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
-    if (type === "mousedown") {
-      contextRef.current.beginPath()
-      startX = offsetX
-      startY = offsetY
-      isDrawing.current = true
-    }
-    else if (type === "mousemove") {
-      if (!isDrawing.current) {
-        return
+  useEffect(
+    () => {
+      let mouseDown = false
+      if (canvasRef.current) {
+        canvasRef.current.off('object:modified')
+        canvasRef.current.off('object:moving')
+        canvasRef.current.off('object:scaling')
+        canvasRef.current.off('object:rotating')
+        canvasRef.current.off('text:changed')
+        canvasRef.current.off('text:editing:exited')
+        canvasRef.current.off('path:created')
+        canvasRef.current.off('mouse:move')
+        canvasRef.current.off('mouse:down')
+        canvasRef.current.off('mouse:up')
+        canvasRef.current.off('object:added')
+        canvasRef.current.off('object:removed')
+
+        canvasRef.current.on('mouse:down', function (options) {
+          mouseDown = true
+
+          const myPointer = {
+            x: options.pointer.x,
+            y: options.pointer.y,
+            drawingStart: canvasRef.current.isDrawingMode,
+          }
+          emitPointer(myPointer)
+        })
+
+        let timeout = null
+        canvasRef.current.on('mouse:move', function (options) {
+          clearTimeout(timeout);
+          timeout = setTimeout(function () {
+            const myPointer = {
+              x: options.pointer.x,
+              y: options.pointer.y,
+              pointerStopped: true,
+            }
+            emitPointer(myPointer)
+          }, 1000);
+
+          const myPointer = {
+            x: options.pointer.x,
+            y: options.pointer.y,
+            drawing: canvasRef.current.isDrawingMode && !(canvasRef.current.freeDrawingBrush instanceof EraserBrush) && mouseDown,
+          }
+          emitPointer(myPointer)
+
+        })
+        canvasRef.current.on('mouse:up', function (options) {
+          mouseDown = false
+          // Not logged in  users and teachers (no room) cannot save tab contents
+          if (loggedIn && roomRef.current) saveTabContent(canvasRef.current, activeTabRef.current)
+
+          const myPointer = {
+            x: options.pointer.x,
+            y: options.pointer.y,
+            drawingEnd: canvasRef.current.isDrawingMode
+          }
+          emitPointer(myPointer)
+        })
+
+        canvasRef.current.on('object:modified', function (options) {
+          if (options.target) {
+            const modifiedObj = {
+              obj: options.target,
+              id: options.target.id,
+            }
+            emitModify(modifiedObj)
+          }
+        })
+
+
+        canvasRef.current.on('object:moving', function (options) {
+          if (options.target) {
+            const modifiedObj = {
+              obj: options.target,
+              id: options.target.id,
+            }
+            emitModify(modifiedObj)
+          }
+        })
+
+        canvasRef.current.on('object:scaling', function (options) {
+          if (options.target) {
+            const modifiedObj = {
+              obj: options.target,
+              id: options.target.id,
+            }
+            emitModify(modifiedObj)
+          }
+        })
+
+        canvasRef.current.on('object:rotating', function (options) {
+          if (options.target) {
+            const modifiedObj = {
+              obj: options.target,
+              id: options.target.id,
+            }
+            emitModify(modifiedObj)
+          }
+        })
+
+        canvasRef.current.on('text:changed', function (options) {
+          if (options.target) {
+            const modifiedObj = {
+              obj: options.target,
+              id: options.target.id,
+            }
+            emitModify(modifiedObj)
+          }
+        })
+
+
+        canvasRef.current.on('path:created', function (options) {
+          const id = uuid()
+          options.path.set({ id: id, erasable: true })
+          if (options) {
+            const addedObject = {
+              obj: options.path,
+              id: id,
+              erasable: options.erasable
+            }
+            emitAdd(addedObject)
+          }
+        });
+
+        // Aktualizacja licznika obrazów przy dodaniu/usunięciu obiektu
+        canvasRef.current.on('object:added', function () {
+          updateImageCount();
+        });
+        canvasRef.current.on('object:removed', function () {
+          updateImageCount();
+        });
+
+        // Inicjalne przeliczenie
+        updateImageCount();
+
+        modifyObj(canvasRef.current)
+        addObj(canvasRef.current)
+        removeObj(canvasRef.current)
+        remotePointer(canvasRef.current)
+        remoteEraser(canvasRef.current)
       }
-      contextTempRef.current.clearRect(0, 0, canvasTempRef.current.width, canvasTempRef.current.height);
+    }, [canvasRef.current])
 
-      contextTempRef.current.beginPath()
-      contextTempRef.current.rect(startX, startY, offsetX - startX, offsetY - startY);
-      contextTempRef.current.stroke()
-    }
-    else if (type === "mouseup") {
-      contextTempRef.current.clearRect(0, 0, canvasTempRef.current.width, canvasTempRef.current.height);
-      contextRef.current.rect(startX, startY, offsetX - startX, offsetY - startY);
-      contextRef.current.stroke()
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    let firstClick = true;
 
-      isDrawing.current = false
-    }
-  }
+    const handleMouseDown = (opt) => {
 
-  const drawCircle = (offsetX, offsetY, type, receivedColor = color) => {
-    contextRef.current.strokeStyle = receivedColor
-    contextTempRef.current.strokeStyle = receivedColor
-
-    if (type === "mousedown") {
-      contextRef.current.beginPath()
-      startX = offsetX
-      startY = offsetY
-      isDrawing.current = true
-    }
-    else if (type === "mousemove") {
-      if (!isDrawing.current) {
-        return
+      if (selectedTool !== 'Textbox') return;
+      const textPointer = canvas.getPointer(opt.e);
+      if (firstClick) {
+        addTextboxAtPointer(canvas, textPointer, selectedColor);
+        firstClick = false;
       }
-      contextTempRef.current.clearRect(0, 0, canvasTempRef.current.width, canvasTempRef.current.height);
-
-      contextTempRef.current.beginPath()
-      contextTempRef.current.arc(startX, startY, Math.abs(offsetX - startX), 0, 2 * Math.PI);
-      contextTempRef.current.stroke()
-    }
-    else if (type === "mouseup") {
-      contextTempRef.current.clearRect(0, 0, canvasTempRef.current.width, canvasTempRef.current.height);
-      contextRef.current.arc(startX, startY, Math.abs(offsetX - startX), 0, 2 * Math.PI);
-      contextRef.current.stroke()
-
-      isDrawing.current = false
-    }
-  }
-
-  const drawLine = (offsetX, offsetY, type, receivedColor = color) => {
-    contextRef.current.strokeStyle = receivedColor
-    contextTempRef.current.strokeStyle = receivedColor
-
-    if (type === "mousedown") {
-      contextRef.current.beginPath()
-      contextRef.current.moveTo(offsetX, offsetY)
-      startX = offsetX
-      startY = offsetY
-      isDrawing.current = true
-    }
-    else if (type === "mousemove") {
-      if (!isDrawing.current) {
-        return
+      else {
+        setSelectedTool('Pointer');
+        activateAllObjects(canvas);
       }
-      contextTempRef.current.clearRect(0, 0, canvasTempRef.current.width, canvasTempRef.current.height);
+    };
 
-      contextTempRef.current.beginPath()
-      contextTempRef.current.moveTo(startX, startY)
-      contextTempRef.current.lineTo(offsetX, offsetY)
-      contextTempRef.current.stroke()
+    if (selectedTool === 'Textbox') {
+      canvas.on('mouse:down', handleMouseDown);
     }
-    else if (type === "mouseup") {
-      contextTempRef.current.clearRect(0, 0, canvasTempRef.current.width, canvasTempRef.current.height);
-      contextRef.current.lineTo(offsetX, offsetY)
-      contextRef.current.stroke()
-      contextRef.current.closePath()
 
-      isDrawing.current = false
-    }
+    return () => {
+      canvas.off('mouse:down', handleMouseDown);
+    };
+  }, [selectedTool]);
+
+  function allowDrop(ev) {
+    ev.preventDefault();
   }
 
-  const erase = (offsetX, offsetY, type, receivedColor = color) => {
-    contextRef.current.strokeStyle = receivedColor
-    contextTempRef.current.strokeStyle = receivedColor
-    if (type === "mousedown") {
-      isDrawing.current = true
-    }
-    else if (type === "mousemove") {
-      if (!isDrawing.current) {
-        return
-      }
-      contextRef.current.beginPath();
-      contextRef.current.globalCompositeOperation = "destination-out";
-      contextRef.current.arc(offsetX, offsetY, 8, 0, Math.PI * 2, false);
-      contextRef.current.fill();
-    }
-    else if (type === "mouseup") {
-      isDrawing.current = false
-      contextRef.current.globalCompositeOperation = "source-over";
-    }
+  async function drop(ev) {
+    ev.preventDefault();
+    let imageUrl = ev.dataTransfer.getData("text");
+    let x = ev.nativeEvent.offsetX
+    let y = ev.nativeEvent.offsetY
+    setIsLoading(true);
+    await addImage(imageUrl, canvasRef.current, x, y)
+    setIsLoading(false);
+    saveTabContent(canvasRef.current, activeTabRef.current);
+    updateImageCount();
   }
 
-  const pasteImage = (offsetX, offsetY, type, receivedImage = imageSrc) => {
-    if (!receivedImage) return
-    console.log("Received image: " + receivedImage)
+  // Funkcja ładowania karty
+  const getActiveTab = (actTab, skipSave = false, fromRemote = false) => {
+    setIsLoading(true); // pokaż spinner
+    const prevTab = activeTabRef.current;
+    if (prevTab && !skipSave && !fromRemote) saveTabContent(canvasRef.current, prevTab);
+    setActiveTab(actTab);
+    loadTab(room, canvasRef.current, actTab)
+      .then(() => {
+        setIsLoading(false); //ukryj spinner
+        updateImageCount();
+      });
+  };
 
-    var img = new Image;
-    img.src = receivedImage;
-    img.onload = () => {
-      if (type === "mousemove") {
-        contextTempRef.current.clearRect(0, 0, canvasImageRef.current.width, canvasImageRef.current.height);
-        contextTempRef.current.drawImage(img, 0, 0, offsetX, offsetY)
-      }
-      if (type === "mouseup") {
-        contextTempRef.current.clearRect(0, 0, canvasImageRef.current.width, canvasImageRef.current.height);
-        contextRef.current.drawImage(img, 0, 0, offsetX, offsetY)
-        setResetTools(true)
-      }
-    }
+  const getImageSrc = async (src) => {
+    console.log('getImageSrc called', src);
+    setIsLoading(true);
+    await addImage(src, canvasRef.current, undefined, undefined, imageCount)
+    saveTabContent(canvasRef.current, activeTabRef.current)
+    setIsLoading(false);
+    updateImageCount();
   }
 
-  const pointer = (offsetX, offsetY) => {
-    contextPointerRef.current.strokeStyle = 'orange';
-    contextPointerRef.current.lineWidth = 3;
-    contextPointerRef.current.clearRect(0, 0, canvasPointerRef.current.width, canvasPointerRef.current.height);
-    contextPointerRef.current.beginPath();
-    contextPointerRef.current.moveTo(offsetX, offsetY);
-    contextPointerRef.current.arc(offsetX, offsetY, 2, 0, 2 * Math.PI);
-    contextPointerRef.current.stroke();
-    contextPointerRef.current.closePath();
-  }
+  // useEffect(() => {
+  //   console.log('isLoading changed:', isLoading);
+  // }, [isLoading]);
 
-  const canvasActions = ({ nativeEvent, type }) => {
-    const { offsetX, offsetY } = nativeEvent
-
-    if (functionType === 'pencil') {
-      drawWithPencil(offsetX, offsetY, type)
-    }
-    if (functionType === 'rectangle') {
-      drawRectangle(offsetX, offsetY, type)
-    }
-    if (functionType === 'line') {
-      drawLine(offsetX, offsetY, type)
-    }
-    if (functionType === 'circle') {
-      drawCircle(offsetX, offsetY, type)
-    }
-    if (functionType === 'eraser') {
-      erase(offsetX, offsetY, type)
-    }
-    if (functionType === 'image') {
-      pasteImage(offsetX, offsetY, type)
-    }
-    else {
-      pointer(offsetX, offsetY)
-    }
-
-    sendEvent(offsetX, offsetY, type, functionType, activeTab, imageSrc)
-  }
-
-  const sendEvent = (offsetX, offsetY, type, functionType, tab) => {
-    socket.emit('drawClick', {
-      tab: tab,
-      functionType: functionType,
-      x: offsetX,
-      y: offsetY,
-      type: type,
-      color: color,
-      room: room,
-      isDrawing: isDrawing,
-      imageSrc: imageSrc
-    });
-  }
-
-  const getActiveTab = (activeTab) => {
-    setActiveTab((prevValue) => {
-      setPreviousTab(prevValue)
-      return activeTab
-    })
-  }
-
-  const getSelectedFunction = (selectedFunction) => {
-    console.log(selectedFunction)
-    setFunctionType(selectedFunction)
+  const getSelectedTool = (tool) => {
+    setSelectedTool(tool)
   }
 
   const getSelectedColor = (color) => {
-    setColor(color)
+    setSelectedColor(color)
   }
 
-  const getImage = (img) => {
-    setImageSrc(img.getAttribute('src'))
-  }
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
 
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    console.log("selectedTool", selectedTool)
+    // upperCanvasEl to faktyczny DOM-owy canvas, na którym Fabric.js ustawia kursor
+    const upperCanvas = canvasRef.current.upperCanvasEl;
+    if (upperCanvas) {
+      //if (selectedTool === 'DrawingMode' || selectedTool === 'Eraser' || selectedTool === 'Line'  || selectedTool === 'Circle' || selectedTool === 'Rect' || selectedTool === 'Triangle' || selectedTool === 'RightTriangle') {
+      if (selectedTool !== 'Pointer' && selectedTool !== 'Textbox') {
+        upperCanvas.classList.add('custom-crosshair-cursor');
+      } else {
+        upperCanvas.classList.remove('custom-crosshair-cursor');
+      }
+    }
+  }, [selectedTool, isLoading, hasLoaded]);
+
+
+  // --- GLOBAL CANVAS EVENT HANDLERS ---
+  const registerGlobalCanvasHandlers = () => {
+    if (!canvasRef.current) return;
+    let mouseDown = false;
+    // Najpierw zdejmij stare handlery, żeby nie dublować
+    canvasRef.current.off('mouse:down');
+    canvasRef.current.off('mouse:move');
+    canvasRef.current.off('mouse:up');
+    // ...inne off jeśli potrzeba...
+
+    canvasRef.current.on('mouse:down', function (options) {
+      mouseDown = true;
+      const myPointer = {
+        x: options.pointer.x,
+        y: options.pointer.y,
+        drawingStart: canvasRef.current.isDrawingMode,
+      };
+      emitPointer(myPointer);
+    });
+
+    let timeout = null;
+    canvasRef.current.on('mouse:move', function (options) {
+      clearTimeout(timeout);
+      timeout = setTimeout(function () {
+        const myPointer = {
+          x: options.pointer.x,
+          y: options.pointer.y,
+          pointerStopped: true,
+        };
+        emitPointer(myPointer);
+      }, 1000);
+
+      const myPointer = {
+        x: options.pointer.x,
+        y: options.pointer.y,
+        drawing: canvasRef.current.isDrawingMode && !(canvasRef.current.freeDrawingBrush instanceof EraserBrush) && mouseDown,
+      };
+      emitPointer(myPointer);
+    });
+
+    canvasRef.current.on('mouse:up', function (options) {
+      mouseDown = false;
+      // Not logged in  users and teachers (no room) cannot save tab contents
+      if (loggedIn && roomRef.current) saveTabContent(canvasRef.current, activeTabRef.current);
+      const myPointer = {
+        x: options.pointer.x,
+        y: options.pointer.y,
+        drawingEnd: canvasRef.current.isDrawingMode
+      };
+      emitPointer(myPointer);
+    });
+  };
+
+  useEffect(
+    () => {
+      // ...existing code...
+      // Zamiast rejestrować handlery tutaj, wywołaj funkcję:
+      registerGlobalCanvasHandlers();
+      // ...pozostałe handlery (object:modified itd.)...
+      // ...existing code...
+    }, [canvasRef.current])
 
   return (
-    <>
-      {/*  Page content */}
-      <main className="grow flex flex-col m-5 mt-20">
-        {/* canvas */}
-        <div className='relative grow border-dashed border-2 border-indigo-600 bg-white'>
-          <canvas className='absolute w-full h-full max-w-full max-h-full box-border z-20'
-            ref={canvasRef}
-            onMouseDown={canvasActions}
-            onMouseMove={canvasActions}
-            onMouseUp={canvasActions}
-          />
-          <canvas className='absolute w-full h-full max-w-full max-h-full box-border z-40'
-            ref={canvasTempRef}
-            onMouseDown={canvasActions}
-            onMouseMove={canvasActions}
-            onMouseUp={canvasActions}
-          />
-          <canvas className='absolute w-full h-full max-w-full max-h-full box-border z-40'
-            ref={canvasImageRef}
-            onMouseDown={canvasActions}
-            onMouseMove={canvasActions}
-            onMouseUp={canvasActions}
-          />
-          <canvas className='absolute w-full h-full max-w-full max-h-full box-border z-30'
-            ref={canvasPointerRef}
-            onMouseMove={pointer}
-          />
-          <ToolsSpeedDial getSelectedFunction={getSelectedFunction} getImage={getImage} resetTools={resetTools} />
-          <ColorPaletteSpeedDial getSelectedColor={getSelectedColor} />
-        </div>
-        <Tabs socket={socket} getActiveTab={getActiveTab} funcType={functionType} />
-      </main>
-
-
-    </>
-  );
+    <div className="canvas-container bg-light-blue mx-auto mb-1" onDrop={drop} onDragOver={allowDrop} >
+      {isLoading && <LoadingSpinner />}
+      {loggedIn && room && <Tabs socket={socket} getActiveTab={getActiveTab} canvasWidth={dimensions.width} />}
+      {!loggedIn && isTutorialDisplayed && <TabsDemo canvasWidth={dimensions.width} />}
+      <Toolbox
+        canvas={canvasRef.current ? canvasRef.current : undefined}
+        socket={socket}
+        tab={activeTab}
+        loggedIn={loggedIn}
+        isTeacher={isTeacher}
+        getImageSrc={getImageSrc}
+        getSelectedTool={getSelectedTool}
+        tool={selectedTool}
+        getSelectedColor={getSelectedColor}
+        registerGlobalCanvasHandlers={registerGlobalCanvasHandlers}
+      />
+      <canvas
+        className={`z-30 w-full h-full ${selectedTool === 'DrawingMode' ? 'custom-crosshair-cursor' : ''}`}
+        ref={canvasRef}
+      />
+    </div>
+  )
 }
 
 export default Canvas;
