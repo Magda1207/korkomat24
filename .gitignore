@@ -3,8 +3,6 @@ node_modules
 dist
 dist-ssr
 .env
-.env.production
-.env.staging
 *.local
 backend/api/.env
 /public
