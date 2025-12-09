@@ -23,7 +23,7 @@ const faqData = [
 	{
 		question: 'Czy za odbyte lekcje muszę płacić podatki?',
 		answer:
-			'Tak, jako korepetytor jesteś zobowiązany do płacenia podatków od swoich dochodów. Zalecamy skonsultowanie się z doradcą podatkowym w celu uzyskania szczegółowych informacji.',
+			'Zalecamy skonsultowanie się z doradcą podatkowym w celu uzyskania szczegółowych informacji.',
 	},
 	{
 		question: 'Co jeszcze muszę wiedzieć?',

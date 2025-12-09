@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import LoadingAnimation from './LoadingAnimation';
 
 import HeroImage from '../images/korkomat-hero-image.jpg';
-import TeacherTile from '../images/teacherTile.png';
-import Invitation from '../images/invitation.png';
 import HomeIllustration from './HomeIllustration';
 import VerticalCarousel from './VerticalCarousel';
 import InvitationPopup from './InvitationPopup';
