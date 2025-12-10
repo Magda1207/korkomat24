@@ -23,7 +23,7 @@ const updateSocketStatus = (socket) => {
   if (!room) {
     socket.status = 'active';
     socket.emit('my_status', { status: socket.status });
-    console.log("Socket has no room, status set to active", socket.id);
+    console.log("Socket has no room, status set to active1", socket.id);
     return;
   }
 
